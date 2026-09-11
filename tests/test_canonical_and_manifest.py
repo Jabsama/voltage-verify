@@ -58,7 +58,8 @@ def test_manifest_rejects_bad_digest_and_challenge():
 
 def test_parse_reference_docker_hub_and_ghcr():
     assert parse_reference("ubuntu:22.04") == ("registry-1.docker.io", "library/ubuntu", "22.04")
-    assert parse_reference("nvidia/cuda:12.8.1-runtime-ubuntu24.04") == ("registry-1.docker.io", "nvidia/cuda", "12.8.1-runtime-ubuntu24.04")
+    cuda = parse_reference("nvidia/cuda:12.8.1-runtime-ubuntu24.04")
+    assert cuda == ("registry-1.docker.io", "nvidia/cuda", "12.8.1-runtime-ubuntu24.04")
     assert parse_reference("ghcr.io/org/app:1.2") == ("ghcr.io", "org/app", "1.2")
     assert parse_reference("ghcr.io/org/app@sha256:" + "0" * 64) == ("ghcr.io", "org/app", "sha256:" + "0" * 64)
     assert parse_reference("localhost:5000/x") == ("localhost:5000", "x", "latest")

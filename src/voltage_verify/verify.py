@@ -242,7 +242,7 @@ def verify_bundle(
                 nonce_ok,
                 "NRAS eat_nonce equals SHA-256 of the manifest"
                 if nonce_ok
-                else "NRAS eat_nonce does NOT equal SHA-256 of the manifest: this attestation was not issued for this workload",
+                else "NRAS eat_nonce does NOT equal SHA-256 of the manifest: not issued for this workload",
             )
             policy = [f for f in res.policy_failures if "eat_nonce" not in f]
             policy_ok_text = (
