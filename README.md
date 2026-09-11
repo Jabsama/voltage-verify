@@ -1,0 +1,114 @@
+# voltage-verify
+
+Bind an Intel TDX quote and an NVIDIA GPU attestation to the workload you meant to run, then
+verify the bundle on your own machine, without trusting the cloud provider.
+
+`voltage-verify` is a small command line tool with three roles:
+
+1. **On your machine**, it writes a *manifest*: the container image digest, the digests of the
+   model or files you care about, a free-text statement, and a fresh random challenge. Two
+   hashes of that manifest become the *commitments*.
+2. **Inside the confidential VM**, it asks the hardware to sign those commitments: the Intel
+   TDX quote carries `SHA-512(manifest)` as its 64-byte `report_data`, and NVIDIA's Remote
+   Attestation Service (NRAS) signs GPU claims over the nonce `SHA-256(manifest)`. It writes
+   one JSON *bundle* with the quote, the NVIDIA tokens and the public collateral needed to
+   check them later.
+3. **Back on your machine**, it verifies the bundle: Intel's signature chain to the pinned
+   Intel SGX Root CA, the platform's TCB status against Intel's published TCB info, the
+   Quoting Enclave identity, revocation lists, NVIDIA's ES384 signatures against NRAS's JWKS,
+   the per-GPU claims (measurements ok, secure boot on, debug off), and above all that both
+   proofs carry *your* commitments. Then it runs six negative tests to show that any change
+   to the manifest, the challenge, the quote or a GPU claim is rejected.
+
+It was written by [VoltageGPU](https://voltagegpu.com) so that tenants of its Confidential VMs
+can verify more than "this is a TDX VM with a confidential GPU": they can verify that the two
+hardware proofs were produced *for the workload described in a manifest they wrote*, on a
+challenge they chose. The trust chain ends at Intel and NVIDIA, never at VoltageGPU.
+
+## What it proves, and what it does not
+
+Verified means:
+
+* the TDX quote was produced inside a genuine Intel TDX Trust Domain, on a platform whose
+  provisioning certificate chains to Intel's root, at an acceptable TCB level, by a genuine
+  Quoting Enclave, and it embeds `SHA-512` of your manifest;
+* NVIDIA's service signed, over `SHA-256` of your manifest, that the GPU(s) in that VM passed
+  attestation with secure boot on and debugging off;
+* both proofs were made after you issued the challenge, so they cannot be replayed from an
+  earlier session or copied from another tenant.
+
+Verified does **not** mean:
+
+* that the GPU *executed* the image or model named in the manifest. Binding a manifest to a
+  quote proves the hardware signed your description of the workload; proving that this exact
+  code ran needs a measured launcher (for instance the Confidential Containers project with
+  a key broker), which is outside this tool;
+* anything about the VM's own software stack beyond what the TDX measurements (`MRTD`,
+  `RTMR0..3`) say. The tool prints them; comparing them against a reference image is your
+  policy, not the tool's;
+* anything about a VM you did not attest yourself.
+
+`docs/WHAT_IT_PROVES.md` goes through every check and its limit.
+
+## Install
+
+```
+pip install voltage-verify            # verifier machine: Python 3.10+, cryptography, PyJWT
+pip install "voltage-verify[attest]"  # inside the VM: adds nv-attestation-sdk and nvidia-ml-py
+```
+
+## Use
+
+On your machine, describe the workload and generate a challenge:
+
+```
+voltage-verify manifest --image ghcr.io/you/app:1.4.2 --artifact model.safetensors \
+    --statement "inference run for customer X" -o manifest.json
+```
+
+Copy `manifest.json` into the VM (scp), then, as root inside the VM:
+
+```
+sudo -E python -m voltage_verify attest --manifest manifest.json -o bundle.json
+```
+
+Copy `bundle.json` back, then:
+
+```
+voltage-verify verify bundle.json --challenge <the challenge printed by `manifest`>
+voltage-verify selftest bundle.json --challenge <same>
+voltage-verify verify bundle.json --offline      # same checks, from the collateral in the bundle
+```
+
+Exit code 0 means verified, 1 means a required check failed, 2 means the bundle or arguments
+are unusable. `--json` prints the machine-readable report.
+
+## Bundle format
+
+Documented in `docs/BUNDLE_FORMAT.md`. In short: the manifest verbatim, both commitments, the
+raw TDX quote (base64), the NRAS token array as returned by the NVIDIA SDK, NRAS's JWKS and
+Intel's TCB info, QE identity and CRLs as fetched at attestation time, plus a few facts about
+the VM (kernel, driver, `nvidia-smi conf-compute -q`). The verifier trusts none of it: it
+recomputes the commitments from the manifest and checks every signature.
+
+## Development
+
+```
+python -m venv .venv && . .venv/bin/activate
+pip install -e ".[dev]"
+pytest
+ruff check src tests
+```
+
+The tests run offline against real evidence: a TDX quote captured on a VoltageGPU H200 VM on
+4 September 2026, NRAS tokens from 4 and 10 September 2026 (single H200, 8x H100 node in
+NVIDIA Protected PCIe mode), and a snapshot of Intel's collateral and NVIDIA's JWKS.
+
+## Security
+
+See `SECURITY.md`. In one line: report anything that would make `verify` say yes when it
+should say no to contact@voltagegpu.com, and expect an answer within two working days.
+
+## License
+
+MIT. Copyright 2026 VOLTAGE EI (VoltageGPU).

@@ -1,0 +1,68 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "voltage-verify"
+version = "0.1.0"
+description = "Bind an Intel TDX quote and an NVIDIA GPU attestation to the workload you meant to run, then verify the bundle without trusting the cloud provider."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "VoltageGPU (VOLTAGE EI)", email = "contact@voltagegpu.com" }]
+keywords = ["confidential-computing", "intel-tdx", "nvidia", "attestation", "remote-attestation", "gpu"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Security :: Cryptography",
+]
+dependencies = [
+  "cryptography>=42,<47",
+  "PyJWT>=2.8,<3",
+]
+
+[project.optional-dependencies]
+# Only needed on the attested VM, to talk to the NVIDIA GPU and to NRAS.
+attest = ["nv-attestation-sdk>=2.7", "nvidia-ml-py>=12"]
+dev = ["pytest>=7", "ruff>=0.6", "mypy>=1.10"]
+
+[project.scripts]
+voltage-verify = "voltage_verify.cli:main"
+
+[project.urls]
+Homepage = "https://voltagegpu.com/blog/two-proofs-tdx-nvidia-h200-attestation-tenant"
+Documentation = "https://docs.voltagegpu.com/pods/confidential-vm"
+Source = "https://github.com/Jabsama/voltage-verify"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/voltage_verify"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "docs", "README.md", "LICENSE", "CHANGELOG.md", "SECURITY.md"]
+
+[tool.ruff]
+line-length = 125
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "N", "W"]
+# S101: asserts are fine in tests. S310: every urlopen in this package targets a constant
+# https:// endpoint (Intel PCS, NVIDIA NRAS) or a registry URL built from an https scheme.
+ignore = ["S101", "S310", "S603", "S607"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.mypy]
+python_version = "3.10"
+strict = false
+ignore_missing_imports = true

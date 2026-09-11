@@ -1,0 +1,22 @@
+{
+  "challenge": "ef7f54c160627ee536a02b5e73896ac4b1ac2cdefdb7cfaaf2366a7d33cc8731",
+  "created_at": "2026-09-11T22:57:39+00:00",
+  "format": "voltage-verify-manifest/1",
+  "statement": "voltage-verify 0.1.0 reference run on a VoltageGPU h100-xlarge Confidential VM (8x H100, NVIDIA Protected PCIe mode)",
+  "workload": {
+    "artifacts": [
+      {
+        "name": "prompt.txt",
+        "sha256": "9ea39a2770b0060f6063a8e4c1a8b12e7268467afb977f4344ed1688895ad60e",
+        "size": 53
+      }
+    ],
+    "extra": {
+      "run": "reference-8xh100-ppcie"
+    },
+    "image": {
+      "digest": "sha256:ebef3c171eeef0298e4eb2e4be843105edf3b8b0ac45e0b43acee358e8046867",
+      "reference": "nvidia/cuda:12.8.1-runtime-ubuntu24.04"
+    }
+  }
+}
