@@ -53,9 +53,31 @@ Verified does **not** mean:
 ## Install
 
 ```
-pip install voltage-verify            # verifier machine: Python 3.10+, cryptography, PyJWT
-pip install "voltage-verify[attest]"  # inside the VM: adds nv-attestation-sdk and nvidia-ml-py
+# verifier machine: Python 3.10+, cryptography, PyJWT
+pip install https://voltagegpu.com/blog/two-proofs/voltage-verify/voltage_verify-0.1.0-py3-none-any.whl
+# inside the VM: the NVIDIA SDK first (it pins cryptography and PyJWT), then the tool
+pip install nv-attestation-sdk nvidia-ml-py
+pip install --no-deps https://voltagegpu.com/blog/two-proofs/voltage-verify/voltage_verify-0.1.0-py3-none-any.whl
 ```
+
+The wheel and the source archive are published with SHA-256 sums at
+https://voltagegpu.com/blog/two-proofs/voltage-verify/. A PyPI listing (`pip install
+voltage-verify`) and a GitHub mirror follow.
+
+## Reference run
+
+`examples/hello-workload/` holds a real bundle captured on 12 September 2026 on a VoltageGPU
+`h100-xlarge` Confidential VM (8x H100, NVIDIA Protected PCIe mode), with its manifest and the
+unedited run log. Replay the verification on your own machine:
+
+```
+voltage-verify verify examples/hello-workload/bundle-8xh100-2026-09-12.json \
+    --challenge ef7f54c160627ee536a02b5e73896ac4b1ac2cdefdb7cfaaf2366a7d33cc8731 --hwmodel GH100 --gpus 8
+voltage-verify selftest examples/hello-workload/bundle-8xh100-2026-09-12.json
+```
+
+Expected: every check `PASS`, platform TCB `UpToDate`, Quoting Enclave `UpToDate`, eight
+`GH100` devices with `measres success`, then six mutations rejected.
 
 ## Use
 

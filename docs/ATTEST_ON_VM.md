@@ -12,11 +12,14 @@ sudo apt-get update
 sudo apt-get install -y python3-venv python3-pip
 python3 -m venv ~/vv
 . ~/vv/bin/activate
-pip install "voltage-verify[attest]"
+pip install nv-attestation-sdk nvidia-ml-py
+pip install --no-deps https://voltagegpu.com/blog/two-proofs/voltage-verify/voltage_verify-0.1.0-py3-none-any.whl
 ```
 
-`nv-attestation-sdk` pulls the NVIDIA local verifier and `nvidia-ml-py`; the first install
-takes a minute.
+Install the NVIDIA SDK first: it pins `cryptography==43.0.1` and `PyJWT 2.7`, both inside the
+ranges this tool accepts, and pulls the NVIDIA local verifier and `nvidia-ml-py`. The first
+install takes a minute. (`pip install "voltage-verify[attest]"` does the same once the package
+is on PyPI.)
 
 ## Multi-GPU nodes (NVIDIA Protected PCIe mode)
 
