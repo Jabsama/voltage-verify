@@ -36,8 +36,14 @@ image you expect is a policy decision that belongs to you.
 | `nvidia.policy` | overall result true; every GPU: `measres` success, `secboot` true, `dbgstat` disabled, nonce matched, report signature verified, certificate chain validated; optional `--hwmodel` and `--gpus` | NVIDIA's service accepted the GPU's measurements and configuration | that the GPU executed your workload |
 | `nvidia.freshness` | the verifier token's `iat` is within 15 minutes of the bundle's `created_at` | the token belongs to this attestation session | anything if the VM clock is wrong (the check then fails, which is the safe direction) |
 
-On a multi-GPU node in NVIDIA Protected PCIe mode, the GPUs are attested as a set through the
-same flow (`nvidia.mode = multi-gpu-ppcie`). NVSwitch attestation is not part of the bundle.
+On a multi-GPU node in NVIDIA Protected PCIe mode (`nvidia.mode = multi-gpu-ppcie`), each GPU
+is attested individually through the same flow: one NRAS token per GPU, on the same nonce.
+`nvidia-smi conf-compute -q` reports `CC State: OFF` next to `Multi-GPU Mode: Protected PCIe`
+on such a node; that is the normal reading for that mode, not a failure, and the bundle keeps
+it verbatim in `environment.conf_compute`. NVSwitch attestation is not part of the bundle. This
+is a different mode from the single-GPU `CC State: ON` of an H200 VM, and the tool never claims
+one when it saw the other: the policy checks the per-GPU claims listed above and nothing else.
+The reference bundle in `examples/hello-workload/` is of the Protected PCIe kind (8x H100).
 
 ## The gap this tool does not close
 
