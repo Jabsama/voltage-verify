@@ -13,13 +13,15 @@ sudo apt-get install -y python3-venv python3-pip
 python3 -m venv ~/vv
 . ~/vv/bin/activate
 pip install nv-attestation-sdk nvidia-ml-py
-pip install --no-deps https://voltagegpu.com/blog/two-proofs/voltage-verify/voltage_verify-0.1.0-py3-none-any.whl
+pip install --no-deps voltage-verify
 ```
 
 Install the NVIDIA SDK first: it pins `cryptography==43.0.1` and `PyJWT 2.7`, both inside the
 ranges this tool accepts, and pulls the NVIDIA local verifier and `nvidia-ml-py`. The first
-install takes a minute. (`pip install "voltage-verify[attest]"` does the same once the package
-is on PyPI.)
+install takes a minute. `pip install "voltage-verify[attest]"` in one step also works, but
+letting pip resolve both at once is slower on the VM than the two commands above. Without
+PyPI access, install the wheel mirrored at
+https://voltagegpu.com/blog/two-proofs/voltage-verify/ with `--no-deps`.
 
 ## Multi-GPU nodes (NVIDIA Protected PCIe mode)
 

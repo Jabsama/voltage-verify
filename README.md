@@ -54,15 +54,15 @@ Verified does **not** mean:
 
 ```
 # verifier machine: Python 3.10+, cryptography, PyJWT
-pip install https://voltagegpu.com/blog/two-proofs/voltage-verify/voltage_verify-0.1.0-py3-none-any.whl
+pip install voltage-verify
 # inside the VM: the NVIDIA SDK first (it pins cryptography and PyJWT), then the tool
 pip install nv-attestation-sdk nvidia-ml-py
-pip install --no-deps https://voltagegpu.com/blog/two-proofs/voltage-verify/voltage_verify-0.1.0-py3-none-any.whl
+pip install --no-deps voltage-verify
 ```
 
-The wheel and the source archive are published with SHA-256 sums at
-https://voltagegpu.com/blog/two-proofs/voltage-verify/. A PyPI listing (`pip install
-voltage-verify`) and a GitHub mirror follow.
+Source and issues: https://github.com/Jabsama/voltage-verify. The same wheel and source
+archive are mirrored with SHA-256 sums at https://voltagegpu.com/blog/two-proofs/voltage-verify/
+for installs that must not touch PyPI (`pip install <wheel URL>`).
 
 ## Reference run
 
