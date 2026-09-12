@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1 (2026-09-12)
+
+* Dependencies: the upper bound `cryptography<47` is removed. It existed only so that the
+  `[attest]` extra could co-install with nv-attestation-sdk (which pins `cryptography==43.0.1`),
+  but it also stopped verifier machines from getting current cryptography releases and their
+  security fixes. The lower bound is unchanged; the test suite passes on 43.0.1 and 50.0.1.
+  No code change.
+
 ## 0.1.0 (2026-09-12)
 
 First release.

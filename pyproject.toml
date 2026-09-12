@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "voltage-verify"
-version = "0.1.0"
+version = "0.1.1"
 description = "Bind an Intel TDX quote and an NVIDIA GPU attestation to the workload you meant to run, then verify the bundle without trusting the cloud provider."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -21,10 +21,12 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Topic :: Security :: Cryptography",
 ]
-# Kept compatible with nv-attestation-sdk 2.7.x, which pins cryptography==43.0.1 and PyJWT 2.7,
-# so that the [attest] extra installs in one environment on the VM.
+# Lower bounds stay compatible with nv-attestation-sdk 2.7.x, which pins cryptography==43.0.1
+# and PyJWT 2.7, so that the [attest] extra installs in one environment on the VM. No upper
+# bound on cryptography: the verifier machine should get the latest release (security fixes
+# in the X.509 and ASN.1 code paths matter here); 0.1.1 is tested against 43.0.1 and 50.0.1.
 dependencies = [
-  "cryptography>=42,<47",
+  "cryptography>=42",
   "PyJWT>=2.7,<3",
 ]
 
