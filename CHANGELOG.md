@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.2 (2026-09-18)
+
+* Docs only, no code change. Spells out what the Protected PCIe reference tokens in
+  `examples/hello-workload/` actually cover (CC State OFF reading, one token per GPU, no NVSwitch
+  fabric attestation). Adds a "Works with any Intel TDX host, any provider" section: `attest` and
+  `verify` never call a VoltageGPU endpoint, they read the kernel's own configfs TSM interface and
+  NVIDIA's own SDK and collateral, so the tool works the same on any TDX host with a confidential
+  NVIDIA GPU, on any cloud.
+
 ## 0.1.1 (2026-09-12)
 
 * Dependencies: the upper bound `cryptography<47` is removed. It existed only so that the

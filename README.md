@@ -110,6 +110,26 @@ voltage-verify verify bundle.json --offline      # same checks, from the collate
 Exit code 0 means verified, 1 means a required check failed, 2 means the bundle or arguments
 are unusable. `--json` prints the machine-readable report.
 
+## Works with any Intel TDX host, any provider
+
+Nothing here is VoltageGPU-specific, and the tool does not call VoltageGPU's API to attest or
+to verify. `manifest` and `verify` run entirely on your own machine. `attest` reads the kernel's
+own confidential-computing interface, `/sys/kernel/config/tsm/report` (configfs TSM, upstream
+since Linux 6.7, present on any distribution with a recent kernel), and calls NVIDIA's own SDK,
+`nv-attestation-sdk`, to talk to NVIDIA's Remote Attestation Service. Neither of those is a
+VoltageGPU endpoint. So `attest` runs the same way inside a TDX guest on Azure, on GCP, on a bare
+metal TDX host with a passthrough NVIDIA GPU, or on VoltageGPU: the interface is the Linux kernel
+and NVIDIA's own service, not us. `verify` checks the bundle against Intel's and NVIDIA's public
+collateral, also fetched from Intel and NVIDIA, never from VoltageGPU.
+
+What this means in practice: if your workload runs on a TDX VM with an NVIDIA H100, H200, or
+Blackwell GPU in confidential compute mode, anywhere, `voltage-verify attest` inside that VM and
+`voltage-verify verify` on your laptop give you the same tenant-side proof this tool was built to
+give VoltageGPU's own customers. We have not run this against every cloud ourselves (the
+[reference run](#reference-run) above is on our own fleet, because that is the hardware we have),
+so if you verify a bundle produced elsewhere, an issue or a pull request with what you saw, good
+or bad, is exactly the kind of report `SECURITY.md` and this repository want.
+
 ## Bundle format
 
 Documented in `docs/BUNDLE_FORMAT.md`. In short: the manifest verbatim, both commitments, the
