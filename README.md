@@ -153,6 +153,15 @@ The tests run offline against real evidence: a TDX quote captured on a VoltageGP
 4 September 2026, NRAS tokens from 4 and 10 September 2026 (single H200, 8x H100 node in
 NVIDIA Protected PCIe mode), and a snapshot of Intel's collateral and NVIDIA's JWKS.
 
+## See also
+
+- [confidential-gpu-attestation-evidence](https://github.com/Jabsama/confidential-gpu-attestation-evidence):
+  every dated bundle this tool has verified on VoltageGPU's fleet since 4 September 2026,
+  including the runs that fail (NVSwitch fabric from a TDX guest), re-verifiable with
+  `voltage-verify verify`.
+- [tdx-guest-probe](https://github.com/Jabsama/tdx-guest-probe): one script that lists what a
+  TDX guest can observe and the host setting it cannot, useful before trusting any quote.
+
 ## Security
 
 See `SECURITY.md`. In one line: report anything that would make `verify` say yes when it
