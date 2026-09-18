@@ -1,5 +1,7 @@
 # voltage-verify
 
+[![PyPI](https://img.shields.io/pypi/v/voltage-verify.svg)](https://pypi.org/project/voltage-verify/) [![CI](https://github.com/Jabsama/voltage-verify/actions/workflows/ci.yml/badge.svg)](https://github.com/Jabsama/voltage-verify/actions) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Evidence](https://img.shields.io/badge/evidence-dated%20bundles-4ade80.svg)](https://github.com/Jabsama/confidential-gpu-attestation-evidence)
+
 Bind an Intel TDX quote and an NVIDIA GPU attestation to the workload you meant to run, then
 verify the bundle on your own machine, without trusting the cloud provider.
 
