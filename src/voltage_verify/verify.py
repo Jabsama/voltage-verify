@@ -261,3 +261,104 @@ def verify_bundle(
             report.add("nvidia.signatures", False, str(err))
 
     return report
+
+
+def verify_quote(
+    raw: bytes,
+    *,
+    expected_report_data: bytes | None = None,
+    online: bool = True,
+    accept_out_of_date: bool = False,
+    at: datetime | None = None,
+) -> Report:
+    """Verify a bare Intel TDX quote from any provider: structure, signature chain up to the
+    pinned Intel root, then TCB status, QE identity and revocation from Intel PCS.
+
+    No manifest, no NVIDIA token, no VoltageGPU anywhere in the path. The only thing the
+    caller can bind is ``expected_report_data``: the 64 bytes the guest put in the report
+    (typically the hash of a nonce the verifier issued). Never raises for a verification
+    failure; returns a Report.
+    """
+    report = Report()
+    now = at or datetime.now(timezone.utc)
+    try:
+        quote = tdx.parse_quote(raw, allow_trailing=True)
+    except tdx.QuoteError as err:
+        report.add("tdx.structure", False, str(err))
+        return report
+    report.add("tdx.structure", True, f"TDX quote v{quote.version}, TEE 0x{quote.tee_type:x}, {len(quote.raw)} bytes")
+    if quote.trailing:
+        report.add(
+            "tdx.trailing",
+            False,
+            f"{quote.trailing} bytes after the signature data were ignored (not covered by any signature)",
+            required=False,
+        )
+    report.facts["tdx"] = {
+        "mr_td": quote.report.mr_td.hex(),
+        "mr_seam": quote.report.mr_seam.hex(),
+        "rtmr": [r.hex() for r in quote.report.rtmr],
+        "tee_tcb_svn": quote.report.tee_tcb_svn.hex(),
+        "td_attributes": quote.report.td_attributes.hex(),
+        "xfam": quote.report.xfam.hex(),
+        "report_data": quote.report.report_data.hex(),
+    }
+    if expected_report_data is not None:
+        bound = quote.report.report_data == expected_report_data
+        report.add(
+            "tdx.report_data",
+            bound,
+            "quote report_data equals the expected value" if bound else "quote report_data does NOT equal the expected value: not issued for your nonce",
+        )
+    try:
+        tdx.verify_signatures(quote, at=now)
+        report.add(
+            "tdx.signatures",
+            True,
+            "attestation key, QE binding, QE report and PCK chain verify up to the pinned Intel SGX Root CA",
+        )
+    except tdx.QuoteError as err:
+        report.add("tdx.signatures", False, str(err))
+        return report
+    try:
+        pck = tdx.pck_info(quote.pck_leaf)
+        report.facts["tdx"]["fmspc"] = pck.fmspc.hex()
+        if not online:
+            report.add(
+                "tdx.collateral",
+                False,
+                "Intel collateral skipped (--offline): TCB status and revocation not checked",
+                required=False,
+            )
+            return report
+        collateral = pcs.fetch_collateral(pck.fmspc, pcs.pck_ca_kind(quote))
+        pcs.verify_document(collateral.tcb_info, at=now)
+        pcs.verify_document(collateral.qe_identity, at=now)
+        report.add("tdx.collateral", True, "TCB info and QE identity signed by Intel (Intel PCS, fetched now)")
+        ev = pcs.evaluate(quote, pck, collateral, at=now)
+        report.facts["tdx"]["tcb_status"] = ev.status
+        report.facts["tdx"]["tcb_level_date"] = ev.level_date
+        report.facts["tdx"]["advisory_ids"] = ev.advisory_ids
+        report.facts["tdx"]["tdx_module"] = {"id": ev.tdx_module_id, "status": ev.tdx_module_status}
+        report.facts["tdx"]["qe_status"] = ev.qe_status
+        detail = f"platform TCB {ev.status}, QE {ev.qe_status}"
+        if ev.tdx_module_id:
+            detail += f", {ev.tdx_module_id} {ev.tdx_module_status}"
+        if ev.advisory_ids:
+            detail += f", advisories {', '.join(ev.advisory_ids)}"
+        report.add("tdx.tcb", ev.acceptable, detail, required=not accept_out_of_date)
+        try:
+            for note in pcs.check_revocation(quote, collateral, at=now):
+                report.add("tdx.revocation", True, note, required=False)
+        except pcs.CollateralError as err:
+            report.add("tdx.revocation", False, str(err))
+    except pcs.CollateralError as err:
+        # Intel's own rule: a platform whose TCB components match no published level is
+        # OutOfDate. With --accept-out-of-date that is a warning like any other stale TCB.
+        stale = "OutOfDate" in str(err)
+        if stale:
+            report.facts["tdx"]["tcb_status"] = "OutOfDate"
+        report.add("tdx.tcb", False, str(err), required=not (stale and accept_out_of_date))
+    except tdx.QuoteError as err:
+        report.add("tdx.tcb", False, str(err))
+    return report

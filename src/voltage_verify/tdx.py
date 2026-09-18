@@ -156,6 +156,9 @@ class Quote:
     qe_report_signature: bytes
     qe_auth_data: bytes
     pck_chain: list[x509.Certificate] = field(default_factory=list)
+    # Bytes after the signature data that were ignored (only when parse_quote was
+    # called with allow_trailing=True). Zero for anything this tool produced.
+    trailing: int = 0
 
     @property
     def signed_bytes(self) -> bytes:
@@ -177,8 +180,14 @@ def _p256_verify(public_key: ec.EllipticCurvePublicKey, raw_sig: bytes, message:
     public_key.verify(der_sig, message, ec.ECDSA(hashes.SHA256()))
 
 
-def parse_quote(raw: bytes) -> Quote:
-    """Parse a TDX v4 quote. Raises QuoteError on any structural problem."""
+def parse_quote(raw: bytes, *, allow_trailing: bool = False) -> Quote:
+    """Parse a TDX v4 quote. Raises QuoteError on any structural problem.
+
+    Bundles produced by this tool never carry bytes after the signature data, so by default
+    any non-zero trailing byte is a structural error. Quotes captured elsewhere sometimes do
+    (Google's go-tdx-guest test vector deliberately appends a text marker); ``allow_trailing``
+    keeps those bytes out of the parsed quote and reports how many were ignored in ``trailing``.
+    """
     if len(raw) < SIGNED_LEN + 4:
         raise QuoteError("quote is too short to hold a header and a TD report")
     version, att_key_type, tee_type = struct.unpack_from("<HHI", raw, 0)
@@ -197,8 +206,9 @@ def parse_quote(raw: bytes) -> Quote:
     sig_end = sig_start + sig_len
     if sig_end > len(raw):
         raise QuoteError("signature data runs past the end of the quote")
-    if any(raw[sig_end:]):
-        raise QuoteError(f"{len(raw) - sig_end} non-zero bytes follow the signature data")
+    trailing = len(raw) - sig_end if any(raw[sig_end:]) else 0
+    if trailing and not allow_trailing:
+        raise QuoteError(f"{trailing} non-zero bytes follow the signature data")
     sd = raw[sig_start:sig_end]
     if len(sd) < 134:
         raise QuoteError("signature data is too short")
@@ -239,6 +249,7 @@ def parse_quote(raw: bytes) -> Quote:
         qe_report_signature=qe_sig,
         qe_auth_data=qe_auth,
         pck_chain=list(chain),
+        trailing=trailing,
     )
 
 

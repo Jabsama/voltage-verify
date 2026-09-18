@@ -132,6 +132,39 @@ give VoltageGPU's own customers. We have not run this against every cloud oursel
 so if you verify a bundle produced elsewhere, an issue or a pull request with what you saw, good
 or bad, is exactly the kind of report `SECURITY.md` and this repository want.
 
+## Verify a quote from anywhere
+
+`quote` takes a bare Intel TDX quote, from any provider, any tool, and runs the Intel half of
+the checks on it: structure, signature chain up to the pinned Intel root, then TCB status, QE
+identity and revocation from Intel PCS. No manifest, no NVIDIA token, no VoltageGPU anywhere in
+the path. The file can be the raw bytes written by `/sys/kernel/config/tsm/report`, or hex, or
+base64.
+
+```
+voltage-verify quote quote.bin
+voltage-verify quote quote.bin --report-data <64 bytes hex>   # bind it to the nonce you issued
+voltage-verify quote quote.bin --offline                       # structure and signatures only
+voltage-verify quote quote.bin --accept-out-of-date --json
+```
+
+Tested on Google's production Sapphire Rapids quote from
+[go-tdx-guest](https://github.com/google/go-tdx-guest/blob/main/testing/testdata/tdx_prod_quote_SPR_E4.dat)
+(vendored in `tests/fixtures/third-party/`, Apache 2.0). Output on 18 September 2026:
+
+```
+[PASS] tdx.structure   TDX quote v4, TEE 0x81, 4935 bytes
+[WARN] tdx.trailing    39 bytes after the signature data were ignored (not covered by any signature)
+[PASS] tdx.signatures  attestation key, QE binding, QE report and PCK chain verify up to the pinned Intel SGX Root CA
+[PASS] tdx.collateral  TCB info and QE identity signed by Intel (Intel PCS, fetched now)
+[WARN] tdx.tcb         no TCB level in Intel's TCB info matches this platform (treat as OutOfDate)
+```
+
+Two things to read in that output. The trailing bytes are a marker Google appends on purpose
+in its test vector; they sit outside the signed region and are reported, not silently dropped.
+The TCB warning is real: that 2023 quote comes from a platform whose firmware level Intel no
+longer lists, so a verifier must call it OutOfDate. Without `--accept-out-of-date` the exit
+code is 1, which is the right answer for a quote you would rely on today.
+
 ## Bundle format
 
 Documented in `docs/BUNDLE_FORMAT.md`. In short: the manifest verbatim, both commitments, the

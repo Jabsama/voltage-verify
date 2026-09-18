@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0 (2026-09-18)
+
+* New command `voltage-verify quote <file>`: verifies a bare Intel TDX quote from any provider,
+  raw, hex or base64, with no manifest and no NVIDIA token. Structure, signature chain up to
+  the pinned Intel root, TCB status, QE identity and revocation from Intel PCS. Options
+  `--report-data` (bind to the 64 bytes you expect), `--offline`, `--accept-out-of-date`,
+  `--json`. Tested against Google's production Sapphire Rapids quote from go-tdx-guest, now
+  vendored under `tests/fixtures/third-party/`.
+* `tdx.parse_quote(raw, allow_trailing=True)` tolerates bytes after the signature data and
+  reports how many were ignored (`Quote.trailing`); the default stays strict, so bundles
+  produced by `attest` are checked exactly as before.
+* A platform whose TCB components match no level in Intel's TCB info is reported as OutOfDate
+  (Intel's own rule) and, with `--accept-out-of-date`, becomes a warning instead of a failure.
+
 ## 0.1.2 (2026-09-18)
 
 * Docs only, no code change. Spells out what the Protected PCIe reference tokens in

@@ -1,0 +1,4 @@
+tdx_prod_quote_SPR_E4.dat: production Intel TDX quote (Sapphire Rapids) taken from
+https://github.com/google/go-tdx-guest/blob/main/testing/testdata/tdx_prod_quote_SPR_E4.dat
+(Apache License 2.0, Copyright Google LLC). Not produced on VoltageGPU: it is here to prove
+that `voltage-verify quote` verifies a quote from another provider.

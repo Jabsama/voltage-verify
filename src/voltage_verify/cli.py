@@ -13,7 +13,7 @@ from .bundle import Bundle, BundleError
 from .canonical import commitments
 from .manifest import ManifestError, build_manifest
 from .registry import RegistryError
-from .verify import Report, verify_bundle
+from .verify import Report, verify_bundle, verify_quote
 
 
 def _print_report(report: Report) -> None:
@@ -99,6 +99,51 @@ def cmd_verify(args: argparse.Namespace) -> int:
     return 0 if report.ok else 1
 
 
+def _read_quote_bytes(path: str) -> bytes:
+    """A quote file as written by configfs TSM (raw), or as people paste it (hex, base64)."""
+    raw = Path(path).read_bytes()
+    text = raw.strip()
+    if text and all(c in b"0123456789abcdefABCDEF\r\n" for c in text):
+        return bytes.fromhex(text.decode("ascii").replace("\n", "").replace("\r", ""))
+    if text and all(c in b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=\r\n" for c in text):
+        import base64
+
+        try:
+            return base64.b64decode(text, validate=False)
+        except Exception:  # noqa: BLE001
+            return raw
+    return raw
+
+
+def cmd_quote(args: argparse.Namespace) -> int:
+    try:
+        raw = _read_quote_bytes(args.quote)
+    except OSError as err:
+        print(f"cannot read {args.quote}: {err}", file=sys.stderr)
+        return 2
+    expected = None
+    if args.report_data:
+        try:
+            expected = bytes.fromhex(args.report_data)
+        except ValueError:
+            print("--report-data must be hex", file=sys.stderr)
+            return 2
+        if len(expected) != 64:
+            print(f"--report-data must be 64 bytes (got {len(expected)})", file=sys.stderr)
+            return 2
+    report = verify_quote(
+        raw,
+        expected_report_data=expected,
+        online=not args.offline,
+        accept_out_of_date=args.accept_out_of_date,
+    )
+    if args.json:
+        print(json.dumps(report.to_json(), indent=2))
+    else:
+        _print_report(report)
+    return 0 if report.ok else 1
+
+
 def cmd_inspect(args: argparse.Namespace) -> int:
     bundle = _load(args.bundle)
     if bundle is None:
@@ -162,6 +207,14 @@ def build_parser() -> argparse.ArgumentParser:
     v.add_argument("--gpus", type=int, help="exact number of attested GPUs expected")
     v.add_argument("--json", action="store_true")
     v.set_defaults(func=cmd_verify)
+
+    q = sub.add_parser("quote", help="verify a bare Intel TDX quote from any provider (no manifest, no NVIDIA)")
+    q.add_argument("quote", help="quote file: raw bytes as written by /sys/kernel/config/tsm/report, or hex, or base64")
+    q.add_argument("--report-data", help="expected 64-byte report_data as hex, e.g. the SHA-512 of the nonce you issued")
+    q.add_argument("--accept-out-of-date", action="store_true", help="report a non-UpToDate TCB as a warning, not a failure")
+    q.add_argument("--offline", action="store_true", help="structure and signatures only, no Intel PCS call")
+    q.add_argument("--json", action="store_true")
+    q.set_defaults(func=cmd_quote)
 
     i = sub.add_parser("inspect", help="print a bundle without the bulky fields")
     i.add_argument("bundle")
